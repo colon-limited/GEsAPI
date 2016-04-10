@@ -1,6 +1,8 @@
 package main
 
 import (
+  "fmt"
+  "log"
   //"gopkg.in/olivere/elastic.v3"
   "github.com/BurntSushi/toml"
   "github.com/gin-gonic/gin"
@@ -74,22 +76,45 @@ func auth(st string)(res bool) {
   return res
 }
 
+func setAccessHeader(c *gin.Context) {
+  c.Header("Access-Control-Allow-Origin", "http://localhost")
+  c.Header("Access-Control-Allow-Credentials", "true")
+  c.Header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+  c.Header("Access-Control-Allow-Methods","GET, POST, PUT, DELETE, OPTIONS")
+}
+
+func before(c *gin.Context, key string)(res bool) {
+  setAccessHeader(c)
+  if auth(key) {
+    res = true
+  } else {
+    res = false
+  }
+  return res
+}
+
 func main() {
   router := gin.Default()
+  router.Use(gin.Logger())
   v1 := router.Group("/v1")
   {
     v1.POST("/report", ListReports)
-    v1.POST("/report/detail", GetReport)
+    v1.POST("/report/detail/:all", GetReport)
     v1.POST("/report/segment", GetSegment)
     v1.POST("/report/segment/edit", EditSegment)
   }
+  //router.Run(con.Base.Port)
   router.Run()
 }
 
 func ListReports(c *gin.Context) {
   var req ReportList
+  log.Println(fmt.Sprintf("req is %d", req))
   c.BindJSON(&req)
-  if auth(req.Auth) {
+  log.Println(fmt.Sprintf("req is %d", req))
+  bef := before(c, req.Auth)
+  log.Println(fmt.Sprintf("before result is %d", bef))
+  if bef {
     c.JSON(200,gin.H{"status":"200",})
   } else {
     c.JSON(500,gin.H{"status":"500",})
@@ -98,7 +123,7 @@ func ListReports(c *gin.Context) {
 func GetReport(c *gin.Context) {
   var req ReportDetail
   c.BindJSON(&req)
-  if auth(req.Auth) {
+  if before(c, req.Auth) {
     c.JSON(200,gin.H{"status":"200",})
   } else {
     c.JSON(500,gin.H{"status":"500",})
@@ -107,7 +132,7 @@ func GetReport(c *gin.Context) {
 func GetSegment(c *gin.Context) {
   var req SegmentList
   c.BindJSON(&req)
-  if auth(req.Auth) {
+  if before(c, req.Auth) {
     c.JSON(200,gin.H{"status":"200",})
   } else {
     c.JSON(500,gin.H{"status":"500",})
@@ -116,7 +141,7 @@ func GetSegment(c *gin.Context) {
 func EditSegment(c *gin.Context) {
   var req SegmentUpdate
   c.BindJSON(&req)
-  if auth(req.Auth) {
+  if before(c, req.Auth) {
     c.JSON(200,gin.H{"status":"200",})
   } else {
     c.JSON(500,gin.H{"status":"500",})
